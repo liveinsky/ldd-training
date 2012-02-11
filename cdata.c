@@ -27,11 +27,13 @@ static int cdata_open(struct inode *inode, struct file *filp)
 
 static int cdata_close(struct file *filp, const char *buf, size_t size, loff_t *off)
 {
+	MSG(DEV_NAME " is close");
 	return 0;
 }
 
 static int cdata_write(struct inode *inode, struct file *filp)
 {
+	MSG(DEV_NAME " is writting");
 	return 0;
 }
 
@@ -57,6 +59,7 @@ int cdata_init_module(void)
 
 void cdata_cleanup_module(void)
 {
+	MSG("unregister device.");
 	unregister_chrdev(DEV_MAJOR, DEV_NAME);
 }
 
