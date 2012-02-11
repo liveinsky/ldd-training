@@ -21,6 +21,7 @@
 
 static int cdata_open(struct inode *inode, struct file *filp)
 {
+	MSG(DEV_NAME " is open");
 	return 0;
 }
 
