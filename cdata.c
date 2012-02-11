@@ -56,6 +56,7 @@ int cdata_init_module(void)
 
 void cdata_cleanup_module(void)
 {
+	unregister_chrdev(DEV_MAJOR, DEV_NAME);
 }
 
 module_init(cdata_init_module);
