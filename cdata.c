@@ -24,7 +24,7 @@ static int cdata_open(struct inode *inode, struct file *filp)
 	return 0;
 }
 
-static int cdata_close(struct inode *inode, struct file *filp)
+static int cdata_close(struct file *filp, const char *buf, size_t size, loff_t *off)
 {
 	return 0;
 }
