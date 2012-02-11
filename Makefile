@@ -1,6 +1,6 @@
 obj-m := cdata.o
 
-KDIR := /lib/modules/2.6.38-13-generic/build
+KDIR := /lib/modules/3.0.0-15-generic/build
 PWD := $(shell pwd)
 
 default:
