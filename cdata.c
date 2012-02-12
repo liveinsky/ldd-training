@@ -16,6 +16,7 @@
 #include <asm/uaccess.h>
 
 #define	MSG(m...)	printk(KERN_INFO "CDATA: " m "\n")
+#define	MSG2(a,b)	printk(KERN_INFO "CDATA: " a "\n", b)
 #define	DEV_MAJOR	121
 #define	DEV_NAME	"debug"
 
@@ -38,6 +39,7 @@ static int cdata_open(struct inode *inode, struct file *filp)
 #endif
 	}
 #endif
+	MSG2("minor number = %d", MINOR(inode->i_rdev));
 	return 0;
 }
 
@@ -47,16 +49,29 @@ static int cdata_close(struct file *filp, const char *buf, size_t size, loff_t *
 	return 0;
 }
 
+ssize_t cdata_read(struct file *filp, char *buf, size_t size, loff_t *off)
+{
+	return 0;
+}
+
 static int cdata_write(struct inode *inode, struct file *filp)
 {
 	MSG(DEV_NAME " is writting");
 	return 0;
 }
 
-static struct file_operations cdata_fops = {	
+int cdata_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	return 0;
+}
+
+static struct file_operations cdata_fops = {
+	owner:		THIS_MODULE,
 	open:		cdata_open,
 	release:	cdata_close,
+	read:		cdata_read,
 	write:		cdata_write,
+	ioctl:		cdata_ioctl,
 };
 
 int cdata_init_module(void)
