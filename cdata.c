@@ -19,9 +19,25 @@
 #define	DEV_MAJOR	121
 #define	DEV_NAME	"debug"
 
+//#define PERFORMANCE_TEST
+//#define SCHEDULE_TEST
+//#define INTERRUPT_TEST
+
 static int cdata_open(struct inode *inode, struct file *filp)
 {
 	MSG(DEV_NAME " is open");
+#ifdef PERFORMANCE_TEST
+	int i=0;
+	for(i=0;i<50000000;i++)
+	{
+#ifdef SCHEDULE_TEST
+#ifdef INTERRUPT_TEST
+		current->state = TASK_UNINTERRUPTIBLE;
+#endif
+		schedule();
+#endif
+	}
+#endif
 	return 0;
 }
 
