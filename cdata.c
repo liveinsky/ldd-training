@@ -20,29 +20,17 @@
 #define	DEV_MAJOR	121
 #define	DEV_NAME	"debug"
 
-//#define OPEN_TEST
-//#define WRITE_TEST
-//#define PERFORMANCE_TEST
-//#define SCHEDULE_TEST
-//#define INTERRUPT_TEST
-
 static int cdata_open(struct inode *inode, struct file *filp)
 {
 	MSG(DEV_NAME " is open");
-#ifdef OPEN_TEST
-#ifdef PERFORMANCE_TEST
+/*
 	int i=0;
 	for(i=0;i<500000;i++)
 	{
-#ifdef SCHEDULE_TEST
-#ifdef INTERRUPT_TEST
 		current->state = TASK_UNINTERRUPTIBLE;
-#endif
 		schedule();
-#endif
 	}
-#endif
-#endif
+*/	
 	MSG2("minor number = %d", MINOR(inode->i_rdev));
 	return 0;
 }
@@ -59,22 +47,18 @@ static ssize_t cdata_read(struct file *filp, char *buf, size_t size, loff_t *off
 	return 0;
 }
 
-static int cdata_write(struct inode *inode, struct file *filp)
+static ssize_t cdata_write(struct file *filp, const char *buf, size_t size, 
+			loff_t *off)
 {
-	MSG(DEV_NAME " is writting");
-#ifdef WRITE_TEST
-#ifdef PERFORMANCE_TEST
-	int i=0;
+	unsigned int i=0;
+	MSG("CDATA is writting");
+#if 1
 	for(i=0;i<500000;i++)
 	{
-#ifdef SCHEDULE_TEST
-#ifdef INTERRUPT_TEST
+		MSG2("CDATA is writting %dnd", i);
 		current->state = TASK_UNINTERRUPTIBLE;
-#endif
 		schedule();
-#endif
 	}
-#endif
 #endif
 	return 0;
 }

@@ -4,15 +4,15 @@
 #include <sys/types.h>
 #include <sys/mman.h>
 
-void main(void)
+int main(void)
 {
-	int fd, fd2;
+	int fd;
 
 	/* O_RDWR: read & write 
 	   only root can write action in /dev/device 
            but read action is all can do it */	
 	fd = open("/dev/cdata", O_RDWR);
-	fd2 = open("/dev/cdata3", O_RDWR);
+	write(fd, "123", 3);
 	close(fd);
-	close(fd2);
+	return 0;
 }
