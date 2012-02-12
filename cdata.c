@@ -32,7 +32,7 @@ static int cdata_open(struct inode *inode, struct file *filp)
 #ifdef OPEN_TEST
 #ifdef PERFORMANCE_TEST
 	int i=0;
-	for(i=0;i<50000000;i++)
+	for(i=0;i<500000;i++)
 	{
 #ifdef SCHEDULE_TEST
 #ifdef INTERRUPT_TEST
@@ -53,7 +53,7 @@ static int cdata_close(struct file *filp, const char *buf, size_t size, loff_t *
 	return 0;
 }
 
-ssize_t cdata_read(struct file *filp, char *buf, size_t size, loff_t *off)
+static ssize_t cdata_read(struct file *filp, char *buf, size_t size, loff_t *off)
 {
 	MSG(DEV_NAME " is reading");
 	return 0;
@@ -65,7 +65,7 @@ static int cdata_write(struct inode *inode, struct file *filp)
 #ifdef WRITE_TEST
 #ifdef PERFORMANCE_TEST
 	int i=0;
-	for(i=0;i<50000000;i++)
+	for(i=0;i<500000;i++)
 	{
 #ifdef SCHEDULE_TEST
 #ifdef INTERRUPT_TEST
@@ -79,7 +79,7 @@ static int cdata_write(struct inode *inode, struct file *filp)
 	return 0;
 }
 
-int cdata_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg)
+static int cdata_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	return 0;
 }
@@ -93,7 +93,7 @@ static struct file_operations cdata_fops = {
 	ioctl:		cdata_ioctl,
 };
 
-int cdata_init_module(void)
+static int cdata_init_module(void)
 {
 	MSG("CDATA v0.1.0");
 	MSG("	Copyright (C) 2004 www.jollen.org");
@@ -107,7 +107,7 @@ int cdata_init_module(void)
 	return 0;
 }
 
-void cdata_cleanup_module(void)
+static void cdata_cleanup_module(void)
 {
 	MSG("unregister device.");
 	unregister_chrdev(DEV_MAJOR, DEV_NAME);
