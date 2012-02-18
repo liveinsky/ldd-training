@@ -70,6 +70,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 {
 	unsigned int i=0;
 	char *buf_in;
+	unsigned char *fb;
 	MSG("CDATA is writting");
 #if 0
 	for(i=0;i<50000;i++)
@@ -81,6 +82,8 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 	}
 #endif
 
+	fb = (unsigned char *) ((struct cdata_t *)filp->private_data)->fb;
+
 	MSG("kmalloc for buf_in[].");
 	buf_in = kmalloc(size, GFP_KERNEL);
 	memcpy(buf_in, buf, size);
@@ -88,6 +91,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 	for(i=0; i<size; i++)
 	{
 		printk(KERN_INFO "CDATA: the write buf[%d] = 0x%x\n", i, buf_in[i]);
+		writeb(buf_in[i], fb++);
 	}	
 	
 	MSG("free buf_in[].");
