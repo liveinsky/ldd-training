@@ -22,11 +22,13 @@
 #define	DEV_NAME	"debug"
 
 #define CDATA_BUF_SIZE 128
+#define LCD_SIZE (320*240*4)
 
 struct cdata_t {
 	unsigned long *fb;
 	unsigned char *buf;
 	unsigned int  buf_ptr;
+	unsigned int  offset;
 };
 
 static int lcd_set(unsigned long *fb, unsigned long color, int pixel)
@@ -50,18 +52,25 @@ static int lcd_flush(void *priv)
 	unsigned char *fb;
 	unsigned int index;
 	unsigned char *buf;
-	int i=0;	
+	int i=0;
+	int offset=0;
 	
 	cdata = (struct cdata_t *) priv;
 	fb = (unsigned char *)cdata->fb;
 	buf = cdata->buf;
 	index = cdata->buf_ptr;
+	offset = cdata->offset;
 
 	for(i=0; i<index; i++)
-		writeb(buf[i], fb++);
+	{
+		writeb(buf[i], fb+offset);
+		printk(KERN_INFO "CDATA: write 0x%x to addr 0x%x\n", buf[i], fb+offset);
+		offset++;
+	}
 
 	cdata->buf_ptr = 0;
-
+	cdata->offset = offset;
+	
 	return 0;
 }
 
@@ -76,6 +85,7 @@ static int cdata_open(struct inode *inode, struct file *filp)
 	data->fb = ioremap(0x33F00000, 320*240*4);
 	data->buf = kmalloc(CDATA_BUF_SIZE, GFP_KERNEL);
 	data->buf_ptr = 0;
+	data->offset = 0;
 	filp->private_data = (void *)data;
 	return 0;
 }
@@ -133,6 +143,8 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 		copy_from_user(&cbuf[index], &buf[i], 1);
 		index++;
 	}
+
+	cdata->buf_ptr = index;	
 
 	return 0;
 }

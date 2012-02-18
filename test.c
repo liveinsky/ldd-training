@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
 {
 	int fd;
 	int i=0, j=0;
-	unsigned char pix[4] = {0x00, 0xFF, 0x00, 0x00};
+	unsigned char pix[4] = {0x00, 0x00, 0x00, 0xff};
 
 #if 0
 	unsigned int cmd=0;
@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 	fd = open("/dev/cdata", O_RDWR);
 	ioctl(fd, CDATA_CLEAR, &i);
 	//ioctl(fd, cmd, &i);
-	for(j=0; j<1000; j++)
+	for(j=0; j<40000; j++)
 		write(fd, pix, 4);
 	close(fd);
 	return 0;
