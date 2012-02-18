@@ -69,8 +69,9 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 			loff_t *off)
 {
 	unsigned int i=0;
+	char *buf_in;
 	MSG("CDATA is writting");
-#if 1
+#if 0
 	for(i=0;i<50000;i++)
 	{
 		MSG2("CDATA is writting %dnd", i);
@@ -79,6 +80,19 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 		schedule();
 	}
 #endif
+
+	MSG("kmalloc for buf_in[].");
+	buf_in = kmalloc(size, GFP_KERNEL);
+	memcpy(buf_in, buf, size);
+
+	for(i=0; i<size; i++)
+	{
+		printk(KERN_INFO "CDATA: the write buf[%d] = 0x%x\n", i, buf_in[i]);
+	}	
+	
+	MSG("free buf_in[].");
+	kfree(buf_in);
+
 	return 0;
 }
 
@@ -86,6 +100,7 @@ static int cdata_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
 {
 	int n;
 	unsigned long *fb;
+	unsigned long color=0;
 	
 	//fix me: lock for fb
 	fb = ((struct cdata_t *)filp->private_data)->fb;
@@ -96,27 +111,28 @@ static int cdata_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
 		case CDATA_CLEAR:
 			n = *((int *) arg); // fixme
 			MSG2("clear pixl = %d.", n);
-			//lcd_set(0, 0);
-			lcd_set(fb, 0xFFFFFF, 0);
+			color = 0xFFFFFF;
 			break;
 		case CDATA_BLACK:
-			lcd_set(fb, 0, 0);
+			color = 0x0;
 			break;
 		case CDATA_WHITE:
-			lcd_set(fb, 0xFFFFFF, 0);
+			color = 0xFFFFFF;
 			break;
 		case CDATA_RED:
-			lcd_set(fb, 0xff0000, 0);
+			color = 0xFF0000;
 			break;
 		case CDATA_GREEN:
-			lcd_set(fb, 0x00ff00, 0);
+			color = 0x00FF00;
 			break;
 		case CDATA_BLUE:
-			lcd_set(fb, 0xff, 0);
+			color = 0xFF;
 			break;
 		default:
 			break;
 	}
+			
+	lcd_set(fb, color, 0);
 
 	return 0;
 }
