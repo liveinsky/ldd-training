@@ -14,11 +14,33 @@
 #include <linux/input.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>
+#include "cdata_ioctl.h"
 
 #define	MSG(m...)	printk(KERN_INFO "CDATA: " m "\n")
 #define	MSG2(a,b)	printk(KERN_INFO "CDATA: " a "\n", b)
 #define	DEV_MAJOR	121
 #define	DEV_NAME	"debug"
+
+static int lcd_set(unsigned long color, int pixel)
+{
+	unsigned long *fb;
+	int i=0, count, count1;
+
+	if(pixel)
+		count = pixel;
+	else
+		count=320*240;
+
+	count1=count*4;
+	
+	fb = ioremap(0x33F00000, count1);
+	for(i = 0; i < count; i++)
+	{
+		writel(color, fb++);
+	}
+
+	return 0;
+}
 
 static int cdata_open(struct inode *inode, struct file *filp)
 {
@@ -66,6 +88,35 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 
 static int cdata_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg)
 {
+	int n;
+	
+	switch(cmd)
+	{
+		case CDATA_CLEAR:
+			n = *((int *) arg); // fixme
+			MSG2("clear pixl = %d.", n);
+			//lcd_set(0, 0);
+			lcd_set(0xFFFFFF, 0);
+			break;
+		case CDATA_BLACK:
+			lcd_set(0, 0);
+			break;
+		case CDATA_WHITE:
+			lcd_set(0xFFFFFF, 0);
+			break;
+		case CDATA_RED:
+			lcd_set(0xff0000, 0);
+			break;
+		case CDATA_GREEN:
+			lcd_set(0x00ff00, 0);
+			break;
+		case CDATA_BLUE:
+			lcd_set(0xff, 0);
+			break;
+		default:
+			break;
+	}
+
 	return 0;
 }
 
@@ -80,18 +131,20 @@ static struct file_operations cdata_fops = {
 
 static int cdata_init_module(void)
 {
+#if 0
 	unsigned long *fb;
 	int i=0, count=320*240, count1=count*4;
-
+#endif
 	MSG("CDATA v0.1.0");
 	MSG("	Copyright (C) 2004 www.jollen.org");
-
-	fb = ioremap(0x33F00000, count);
-	for(i = 0; i < count1; i++)
+#if 0
+	fb = ioremap(0x33F00000, count1);
+	for(i = 0; i < count; i++)
 	{
 		writel(0x00ff00, fb++);
 	}
-
+#endif
+	lcd_set(0x00ff00, 0);
 	if(register_chrdev(DEV_MAJOR, DEV_NAME, &cdata_fops) < 0)
 	{
 		MSG("Couldn't register a device.");
