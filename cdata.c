@@ -21,8 +21,12 @@
 #define	DEV_MAJOR	121
 #define	DEV_NAME	"debug"
 
+#define CDATA_BUF_SIZE 128
+
 struct cdata_t {
 	unsigned long *fb;
+	unsigned char *buf;
+	unsigned int  buf_ptr;
 };
 
 static int lcd_set(unsigned long *fb, unsigned long color, int pixel)
@@ -40,6 +44,27 @@ static int lcd_set(unsigned long *fb, unsigned long color, int pixel)
 	return 0;
 }
 
+static int lcd_flush(void *priv)
+{
+	struct cdata_t *cdata;
+	unsigned char *fb;
+	unsigned int index;
+	unsigned char *buf;
+	int i=0;	
+	
+	cdata = (struct cdata_t *) priv;
+	fb = (unsigned char *)cdata->fb;
+	buf = cdata->buf;
+	index = cdata->buf_ptr;
+
+	for(i=0; i<index; i++)
+		writeb(buf[i], fb++);
+
+	cdata->buf_ptr = 0;
+
+	return 0;
+}
+
 static int cdata_open(struct inode *inode, struct file *filp)
 {
 	struct cdata_t *data;
@@ -49,13 +74,25 @@ static int cdata_open(struct inode *inode, struct file *filp)
 
 	data = (struct cdata_t *) kmalloc(sizeof(struct cdata_t), GFP_KERNEL);
 	data->fb = ioremap(0x33F00000, 320*240*4);
+	data->buf = kmalloc(CDATA_BUF_SIZE, GFP_KERNEL);
+	data->buf_ptr = 0;
 	filp->private_data = (void *)data;
 	return 0;
 }
 
-static int cdata_close(struct file *filp, const char *buf, size_t size, loff_t *off)
+static int cdata_close(struct inode *inode, struct file *filp)
 {
+	struct cdata_t *cdata=NULL;
+	
 	MSG(DEV_NAME " is close");
+	
+	cdata = (struct cdata_t *) filp->private_data;
+
+	lcd_flush((void *)cdata);
+			
+	kfree(cdata->buf);
+	kfree(cdata);
+	
 	return 0;
 }
 
@@ -68,9 +105,9 @@ static ssize_t cdata_read(struct file *filp, char *buf, size_t size, loff_t *off
 static ssize_t cdata_write(struct file *filp, const char *buf, size_t size, 
 			loff_t *off)
 {
-	unsigned int i=0;
-	char *buf_in;
-	unsigned char *fb;
+	unsigned int i=0, len=0, index=0;
+	unsigned char *cbuf;
+	struct cdata_t *cdata;
 	MSG("CDATA is writting");
 #if 0
 	for(i=0;i<50000;i++)
@@ -82,20 +119,20 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 	}
 #endif
 
-	fb = (unsigned char *) ((struct cdata_t *)filp->private_data)->fb;
+	cdata = (struct cdata_t *)filp->private_data;
+	index = cdata->buf_ptr;
+	cbuf = cdata->buf;
 
-	MSG("kmalloc for buf_in[].");
-	buf_in = kmalloc(size, GFP_KERNEL);
-	memcpy(buf_in, buf, size);
-
-	for(i=0; i<size; i++)
+	for(i=0; i < size; i++)
 	{
-		printk(KERN_INFO "CDATA: the write buf[%d] = 0x%x\n", i, buf_in[i]);
-		writeb(buf_in[i], fb++);
-	}	
-	
-	MSG("free buf_in[].");
-	kfree(buf_in);
+		if(index >= CDATA_BUF_SIZE)
+		{
+			lcd_flush((void *)cdata);
+			index = cdata->buf_ptr;
+		}
+		copy_from_user(&cbuf[index], &buf[i], 1);
+		index++;
+	}
 
 	return 0;
 }

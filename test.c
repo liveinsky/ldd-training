@@ -9,7 +9,7 @@
 int main(int argc, char *argv[])
 {
 	int fd;
-	int i=0;
+	int i=0, j=0;
 	unsigned char pix[4] = {0x00, 0xFF, 0x00, 0x00};
 
 #if 0
@@ -54,7 +54,8 @@ int main(int argc, char *argv[])
 	fd = open("/dev/cdata", O_RDWR);
 	ioctl(fd, CDATA_CLEAR, &i);
 	//ioctl(fd, cmd, &i);
-	write(fd, pix, 4);
+	for(j=0; j<1000; j++)
+		write(fd, pix, 4);
 	close(fd);
 	return 0;
 }
