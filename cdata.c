@@ -21,20 +21,18 @@
 #define	DEV_MAJOR	121
 #define	DEV_NAME	"debug"
 
-static int lcd_set(unsigned long color, int pixel)
-{
+struct cdata_t {
 	unsigned long *fb;
-	int i=0, count, count1;
+};
 
-	if(pixel)
-		count = pixel;
-	else
-		count=320*240;
+static int lcd_set(unsigned long *fb, unsigned long color, int pixel)
+{
+	int i=0;
 
-	count1=count*4;
-	
-	fb = ioremap(0x33F00000, count1);
-	for(i = 0; i < count; i++)
+	if((pixel > 320*240) || (pixel == 0))
+		pixel = 320*240;
+
+	for(i = 0; i < pixel; i++)
 	{
 		writel(color, fb++);
 	}
@@ -44,16 +42,14 @@ static int lcd_set(unsigned long color, int pixel)
 
 static int cdata_open(struct inode *inode, struct file *filp)
 {
+	struct cdata_t *data;
+
 	MSG(DEV_NAME " is open");
-/*
-	int i=0;
-	for(i=0;i<500000;i++)
-	{
-		current->state = TASK_UNINTERRUPTIBLE;
-		schedule();
-	}
-*/	
 	MSG2("minor number = %d", MINOR(inode->i_rdev));
+
+	data = (struct cdata_t *) kmalloc(sizeof(struct cdata_t), GFP_KERNEL);
+	data->fb = ioremap(0x33F00000, 320*240*4);
+	filp->private_data = (void *)data;
 	return 0;
 }
 
@@ -89,6 +85,11 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 static int cdata_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	int n;
+	unsigned long *fb;
+	
+	//fix me: lock for fb
+	fb = ((struct cdata_t *)filp->private_data)->fb;
+	//fix me: unlock for fb
 	
 	switch(cmd)
 	{
@@ -96,22 +97,22 @@ static int cdata_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
 			n = *((int *) arg); // fixme
 			MSG2("clear pixl = %d.", n);
 			//lcd_set(0, 0);
-			lcd_set(0xFFFFFF, 0);
+			lcd_set(fb, 0xFFFFFF, 0);
 			break;
 		case CDATA_BLACK:
-			lcd_set(0, 0);
+			lcd_set(fb, 0, 0);
 			break;
 		case CDATA_WHITE:
-			lcd_set(0xFFFFFF, 0);
+			lcd_set(fb, 0xFFFFFF, 0);
 			break;
 		case CDATA_RED:
-			lcd_set(0xff0000, 0);
+			lcd_set(fb, 0xff0000, 0);
 			break;
 		case CDATA_GREEN:
-			lcd_set(0x00ff00, 0);
+			lcd_set(fb, 0x00ff00, 0);
 			break;
 		case CDATA_BLUE:
-			lcd_set(0xff, 0);
+			lcd_set(fb, 0xff, 0);
 			break;
 		default:
 			break;
@@ -131,8 +132,8 @@ static struct file_operations cdata_fops = {
 
 static int cdata_init_module(void)
 {
-#if 0
 	unsigned long *fb;
+#if 0
 	int i=0, count=320*240, count1=count*4;
 #endif
 	MSG("CDATA v0.1.0");
@@ -144,7 +145,9 @@ static int cdata_init_module(void)
 		writel(0x00ff00, fb++);
 	}
 #endif
-	lcd_set(0x00ff00, 0);
+	fb = ioremap(0x33F00000, 320*240*4);
+	lcd_set(fb, 0x00ff00, 0);
+	
 	if(register_chrdev(DEV_MAJOR, DEV_NAME, &cdata_fops) < 0)
 	{
 		MSG("Couldn't register a device.");
