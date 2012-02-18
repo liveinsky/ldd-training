@@ -53,10 +53,11 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 	unsigned int i=0;
 	MSG("CDATA is writting");
 #if 1
-	for(i=0;i<500000;i++)
+	for(i=0;i<50000;i++)
 	{
 		MSG2("CDATA is writting %dnd", i);
 		current->state = TASK_UNINTERRUPTIBLE;
+		//current->state = TASK_INTERRUPTIBLE;
 		schedule();
 	}
 #endif
@@ -79,16 +80,29 @@ static struct file_operations cdata_fops = {
 
 static int cdata_init_module(void)
 {
+	unsigned long *fb;
+	int i=0, count=320*240, count1=count*4;
+
 	MSG("CDATA v0.1.0");
 	MSG("	Copyright (C) 2004 www.jollen.org");
+
+	fb = ioremap(0x33F00000, count);
+	for(i = 0; i < count1; i++)
+	{
+		writel(0x00ff00, fb++);
+	}
 
 	if(register_chrdev(DEV_MAJOR, DEV_NAME, &cdata_fops) < 0)
 	{
 		MSG("Couldn't register a device.");
 		return -1;
 	}
+	else
+	{
+		MSG("CDATA is inited.");
+		return 0;
+	}
 	
-	return 0;
 }
 
 static void cdata_cleanup_module(void)
