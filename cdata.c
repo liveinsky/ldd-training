@@ -155,12 +155,14 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 		{
 			cdata->buf_ptr = index;
 			
-			// FIXME: kernel scheduling
-			data->flush_timer.expires = jiffies + 1*HZ;
-			data->flush_timer.data = (unsigned long) cdata;
-			data->flush_timer.function = flush_lcd;
+			/* kernel scheduling */
+			cdata->flush_timer.expires = jiffies + 1*HZ;
+			cdata->flush_timer.data = (unsigned long) cdata;
+			cdata->flush_timer.function = flush_lcd;
 			
-			// FIXME: process scheduling
+			/* process scheduling */
+			current->state = TASK_INTERRUPTIBLE;
+			schedule();
 			
 			index = cdata->buf_ptr;
 		}
