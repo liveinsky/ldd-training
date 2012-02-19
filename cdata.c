@@ -226,7 +226,7 @@ static int cdata_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
 	switch(cmd)
 	{
 		case CDATA_CLEAR:
-			n = *((int *) arg); // fixme
+			copy_from_user(&n, arg, sizeof(int));
 			MSG2("clear pixl = %d.", n);
 			//color = 0xFFFFFF;
 			color = 0;
@@ -247,7 +247,7 @@ static int cdata_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
 			color = 0xFF;
 			break;
 		default:
-			break;
+			return -ENOTTY;
 	}
 			
 	lcd_set(fb, color, 0);
