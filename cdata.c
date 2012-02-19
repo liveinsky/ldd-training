@@ -29,7 +29,15 @@ struct cdata_t {
 	unsigned char *buf;
 	unsigned int  buf_ptr;
 	unsigned int  offset;
+	struct timer_list timer;
 };
+
+static int cdata_timer(void *cdata)
+{
+	/* do something */
+
+	add_timer(cdata->timer)
+}
 
 static int lcd_set(unsigned long *fb, unsigned long color, int pixel)
 {
@@ -64,7 +72,6 @@ static int lcd_flush(void *priv)
 	for(i=0; i<index; i++)
 	{
 		writeb(buf[i], fb+offset);
-		printk(KERN_INFO "CDATA: write 0x%x to addr 0x%x\n", buf[i], fb+offset);
 		offset++;
 	}
 
@@ -86,6 +93,13 @@ static int cdata_open(struct inode *inode, struct file *filp)
 	data->buf = kmalloc(CDATA_BUF_SIZE, GFP_KERNEL);
 	data->buf_ptr = 0;
 	data->offset = 0;
+	
+	/* init timer */
+	init_timer(&data->timer);	
+	data->timer.expires = jiffies + 20;
+	data->timer.data = (void *) data;
+	data->timer.function = &cdata_timer;
+
 	filp->private_data = (void *)data;
 	return 0;
 }
@@ -133,12 +147,17 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 	index = cdata->buf_ptr;
 	cbuf = cdata->buf;
 
+	add_timer(cdata->timer)
+	
 	for(i=0; i < size; i++)
 	{
 		if(index >= CDATA_BUF_SIZE)
 		{
 			lcd_flush((void *)cdata);
 			index = cdata->buf_ptr;
+		
+			current->state = TASK_INTERRUPTIBLE;
+			schedule();
 		}
 		copy_from_user(&cbuf[index], &buf[i], 1);
 		index++;
