@@ -29,12 +29,13 @@ struct cdata_t {
 	unsigned char *buf;
 	unsigned int  buf_ptr;
 	unsigned int  offset;
-	struct timer_list timer;
+	/* kernel timer */
+	struct timer_list flush_timer;
 };
 
-static int cdata_timer(void *cdata)
+static void cdata_wake_up(void *cdata)
 {
-	/* do something */
+	// FIXME: wakeup process
 
 	add_timer(cdata->timer)
 }
@@ -54,7 +55,7 @@ static int lcd_set(unsigned long *fb, unsigned long color, int pixel)
 	return 0;
 }
 
-static int lcd_flush(void *priv)
+static int lcd_flush(unsigned long priv)
 {
 	struct cdata_t *cdata;
 	unsigned char *fb;
@@ -95,10 +96,7 @@ static int cdata_open(struct inode *inode, struct file *filp)
 	data->offset = 0;
 	
 	/* init timer */
-	init_timer(&data->timer);	
-	data->timer.expires = jiffies + 20;
-	data->timer.data = (void *) data;
-	data->timer.function = &cdata_timer;
+	init_timer(&data->flush_timer);	
 
 	filp->private_data = (void *)data;
 	return 0;
@@ -132,6 +130,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 	unsigned int i=0, len=0, index=0;
 	unsigned char *cbuf;
 	struct cdata_t *cdata;
+	struct timer_list *timer;
 	MSG("CDATA is writting");
 #if 0
 	for(i=0;i<50000;i++)
@@ -146,6 +145,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 	cdata = (struct cdata_t *)filp->private_data;
 	index = cdata->buf_ptr;
 	cbuf = cdata->buf;
+	timer = cdata->flush_timer;
 
 	add_timer(cdata->timer)
 	
@@ -154,11 +154,15 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 		if(index >= CDATA_BUF_SIZE)
 		{
 			cdata->buf_ptr = index;
-			lcd_flush((void *)cdata);
+			
+			// FIXME: kernel scheduling
+			data->flush_timer.expires = jiffies + 1*HZ;
+			data->flush_timer.data = (unsigned long) cdata;
+			data->flush_timer.function = flush_lcd;
+			
+			// FIXME: process scheduling
+			
 			index = cdata->buf_ptr;
-		
-			current->state = TASK_INTERRUPTIBLE;
-			schedule();
 		}
 		copy_from_user(&cbuf[index], &buf[i], 1);
 		index++;
