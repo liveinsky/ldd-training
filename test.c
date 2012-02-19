@@ -11,6 +11,7 @@ int main(int argc, char *argv[])
 	int fd;
 	int i=0, j=0;
 	unsigned char pix[4] = {0x00, 0x00, 0x00, 0xff};
+	pid_t pid;
 
 #if 0
 	unsigned int cmd=0;
@@ -51,11 +52,32 @@ int main(int argc, char *argv[])
 	/* O_RDWR: read & write 
 	   only root can write action in /dev/device 
        but read action is all can do it */	
+	//ioctl(fd, cmd, &i);
+	printf("do open\n");
 	fd = open("/dev/cdata", O_RDWR);
 	ioctl(fd, CDATA_CLEAR, &i);
-	//ioctl(fd, cmd, &i);
-	for(j=0; j<1000; j++)
-		write(fd, pix, 4);
+	printf("do fork\n");
+	pid = fork();
+	if(pid == 0)
+	{
+		pix[0] = 0xff;
+		pix[1] = 0xff;
+		pix[2] = 0xff;
+		while(1)
+		{
+			write(fd, pix, 4);
+		}
+	}
+	else
+	{
+		pix[0] = 0xff;
+		pix[1] = 0x00;
+		pix[2] = 0x00;
+		while(1)
+		{
+			write(fd, pix, 4);
+		}
+	}
 	close(fd);
 	return 0;
 }

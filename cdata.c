@@ -29,14 +29,29 @@ struct cdata_t {
 	unsigned char *buf;
 	unsigned int  buf_ptr;
 	unsigned int  offset;
+
 	/* kernel timer */
 	struct timer_list flush_timer;
+	struct timer_list sched_timer;
+
+	//DECLARE_WAIT_QUEUE_HEAD(wq)
+	wait_queue_head_t wq;
 };
 
 static void cdata_wake_up(unsigned long priv)
 {
-	// FIXME: wakeup process
+	struct cdata_t *cdata;
+	struct timer_list *sched;
+	wait_queue_head_t *wq;
+	
+	cdata = (struct cdata_t *) priv;
+	sched = &cdata->sched_timer;
+	wq = &cdata->wq;
 
+	wake_up(wq);
+
+	sched->expires = jiffies + 10;
+	add_timer(sched);
 }
 
 static int lcd_set(unsigned long *fb, unsigned long color, int pixel)
@@ -96,6 +111,10 @@ static int cdata_open(struct inode *inode, struct file *filp)
 	
 	/* init timer */
 	init_timer(&data->flush_timer);	
+	init_timer(&data->sched_timer);	
+
+	/* init wq */
+	init_waitqueue_head(&data->wq);
 
 	filp->private_data = (void *)data;
 	return 0;
@@ -130,7 +149,11 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 	unsigned char *cbuf=NULL;
 	struct cdata_t *cdata=NULL;
 	struct timer_list *timer=NULL;
-	MSG("CDATA is writting");
+	struct timer_list *sched=NULL;
+	wait_queue_head_t *wq;
+	wait_queue_t wait;
+	
+	//MSG("CDATA is writting");
 #if 0
 	for(i=0;i<50000;i++)
 	{
@@ -145,7 +168,8 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 	index = cdata->buf_ptr;
 	cbuf = cdata->buf;
 	timer = &cdata->flush_timer;
-
+	sched = &cdata->sched_timer;
+	wq = &cdata->wq;
 	
 	for(i=0; i < size; i++)
 	{
@@ -159,11 +183,26 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 			timer->function = lcd_flush;
 			add_timer(timer);
 			
+			sched->expires = jiffies + 10;
+			sched->data = (unsigned long) cdata;
+			sched->function = cdata_wake_up;
+			add_timer(sched);
+			
+			wait.flags = 0;
+			wait.task = current;
+			add_wait_queue(wq, &wait);
+repeat:
 			/* process scheduling */
 			current->state = TASK_INTERRUPTIBLE;
 			schedule();
 			
 			index = cdata->buf_ptr;
+
+			if(index != 0)
+				goto repeat;
+
+			remove_wait_queue(wq, &wait);
+			del_timer(sched);
 		}
 		copy_from_user(&cbuf[index], &buf[i], 1);
 		index++;
@@ -189,7 +228,8 @@ static int cdata_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
 		case CDATA_CLEAR:
 			n = *((int *) arg); // fixme
 			MSG2("clear pixl = %d.", n);
-			color = 0xFFFFFF;
+			//color = 0xFFFFFF;
+			color = 0;
 			break;
 		case CDATA_BLACK:
 			color = 0x0;
@@ -239,6 +279,7 @@ static int cdata_init_module(void)
 		writel(0x00ff00, fb++);
 	}
 #endif
+	/* reset the lcd */
 	fb = ioremap(0x33F00000, 320*240*4);
 	lcd_set(fb, 0x00ff00, 0);
 	
