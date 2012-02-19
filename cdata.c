@@ -153,6 +153,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 	{
 		if(index >= CDATA_BUF_SIZE)
 		{
+			cdata->buf_ptr = index;
 			lcd_flush((void *)cdata);
 			index = cdata->buf_ptr;
 		
