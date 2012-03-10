@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
 {
 	int fd;
 	int i=0, j=0;
-	unsigned char pix[4] = {0x00, 0x00, 0x00, 0xff};
+	unsigned char pix[4] = {0xff, 0x00, 0x00, 0xff};
 	pid_t pid;
 
 #if 0
@@ -56,6 +56,7 @@ int main(int argc, char *argv[])
 	printf("do open\n");
 	fd = open("/dev/cdata", O_RDWR);
 	ioctl(fd, CDATA_CLEAR, &i);
+#if 0
 	printf("do fork\n");
 	pid = fork();
 	if(pid == 0)
@@ -78,6 +79,12 @@ int main(int argc, char *argv[])
 			write(fd, pix, 4);
 		}
 	}
+#else
+	while(1)
+	{
+		write(fd, pix, 4);
+	}
+#endif
 	close(fd);
 	return 0;
 }
