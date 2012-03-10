@@ -79,11 +79,16 @@ int main(int argc, char *argv[])
 			write(fd, pix, 4);
 		}
 	}
-#else
+#else 
+# if 0
 	while(1)
 	{
 		write(fd, pix, 4);
 	}
+#else
+	mmap(0, 1024, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	sleep(15);
+#endif
 #endif
 	close(fd);
 	return 0;

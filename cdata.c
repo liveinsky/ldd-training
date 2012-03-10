@@ -227,6 +227,7 @@ static int cdata_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
 	{
 		case CDATA_CLEAR:
 			copy_from_user(&n, arg, sizeof(int));
+			//get_user(n, arg); => equal = copy_from_user()
 			MSG2("clear pixl = %d.", n);
 			//color = 0xFFFFFF;
 			color = 0;
@@ -255,6 +256,13 @@ static int cdata_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
 	return 0;
 }
 
+int cdata_mmap(struct file *filp, struct vm_area_struct *vma)
+{
+	MSG("in cdata_mmap()");
+	MSG2("start addr = 0x%08x", vma->vm_start);
+	MSG2("end addr = 0x%08x", vma->vm_end);
+}
+
 static struct file_operations cdata_fops = {
 	owner:		THIS_MODULE,
 	open:		cdata_open,
@@ -262,6 +270,7 @@ static struct file_operations cdata_fops = {
 	read:		cdata_read,
 	write:		cdata_write,
 	ioctl:		cdata_ioctl,
+	mmap:		cdata_mmap,
 };
 
 static int cdata_init_module(void)
