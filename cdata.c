@@ -258,9 +258,30 @@ static int cdata_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
 
 int cdata_mmap(struct file *filp, struct vm_area_struct *vma)
 {
+	unsigned long from;
+	unsigned long to;
+	unsigned long size;
+
+	from = vma->vm_start;
+	to = 0x33f00000;
+	size = vma->vm_end - vma->vm_start;
+#if 0
+	remap_page_range(from, to, size, PAGE_SHARED);
+#else
+	while(size)
+	{
+		remap_page_range(from, to, PAGE_SIZE, PAGE_SHARED);
+	
+		from += PAGE_SIZE;
+		to += PAGE_SIZE;
+		size -= PAGE_SIZE;
+	}
+#endif
 	MSG("in cdata_mmap()");
-	MSG2("start addr = 0x%08x", vma->vm_start);
-	MSG2("end addr = 0x%08x", vma->vm_end);
+	MSG2("start addr = %p", vma->vm_start);
+	MSG2("end addr = %p", vma->vm_end);
+
+	return 0;	
 }
 
 static struct file_operations cdata_fops = {

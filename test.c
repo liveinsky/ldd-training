@@ -9,6 +9,7 @@
 int main(int argc, char *argv[])
 {
 	int fd;
+	int *addr=0;
 	int i=0, j=0;
 	unsigned char pix[4] = {0xff, 0x00, 0x00, 0xff};
 	pid_t pid;
@@ -80,15 +81,12 @@ int main(int argc, char *argv[])
 		}
 	}
 #else 
-# if 0
-	while(1)
+	addr = mmap(0, 1024, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	for(i=0; i < 256; i++)
 	{
-		write(fd, pix, 4);
+		memcpy(&addr[i], pix, 4);
 	}
-#else
-	mmap(0, 1024, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	sleep(15);
-#endif
 #endif
 	close(fd);
 	return 0;
