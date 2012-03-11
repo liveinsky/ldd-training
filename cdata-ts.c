@@ -26,6 +26,8 @@ struct input_dev ts_input;
 
 int ts_input_open(struct input_dev *dev)
 {
+	input_report_abs(dev, ABS_X, x);
+	input_report_abs(dev, ABS_Y, y);
 	return 0;
 }
 void ts_input_close(struct input_dev *dev)
