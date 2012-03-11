@@ -22,12 +22,24 @@
 
 void cdata_bh(unsigned long);
 DECLARE_TASKLET(my_tasklet, cdata_bh, NULL);
+struct input_dev ts_input;
+
+int ts_input_open(struct input_dev *dev)
+{
+	return 0;
+}
+void ts_input_close(struct input_dev *dev)
+{
+}
 
 int cdata_ts_handler(int irq, void *priv, struct pt_regs *reg)
 {
 	static int i=0;
 	MSG2("in cdata_ts_handler(%d)", i++);
 	tasklet_schedule(&my_tasklet);		
+	
+	/* FIXME: read (x,y) from ADC */
+	
 	return 0;
 }
 
@@ -35,7 +47,7 @@ void cdata_bh(unsigned long priv)
 {
 	static int i=0;
 	MSG2("cdata_bh(%d)", i++);
-	while(1);
+	//while(1);
 }
 
 static int cdata_ts_open(struct inode *inode, struct file *filp)
@@ -64,6 +76,12 @@ static int cdata_ts_open(struct inode *inode, struct file *filp)
 		MSG("request irq failed.");
 		return -1;
 	}	
+
+	/* handling input device */
+	ts_input.open = ts_input_open;
+	ts_input.close = ts_input_close;
+	
+	input_register_device(&ts_input);
 
 	return 0;
 }
