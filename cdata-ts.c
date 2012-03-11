@@ -24,6 +24,8 @@ void cdata_bh(unsigned long);
 DECLARE_TASKLET(my_tasklet, cdata_bh, NULL);
 struct input_dev ts_input;
 
+int x, y;
+
 int ts_input_open(struct input_dev *dev)
 {
 	input_report_abs(dev, ABS_X, x);
@@ -41,6 +43,8 @@ int cdata_ts_handler(int irq, void *priv, struct pt_regs *reg)
 	tasklet_schedule(&my_tasklet);		
 	
 	/* FIXME: read (x,y) from ADC */
+	x = 100;
+	y = 100;
 	
 	return 0;
 }
