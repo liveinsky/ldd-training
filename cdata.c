@@ -186,10 +186,10 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 	cdata = (struct cdata_t *)filp->private_data;
 	down_interruptible(&cdata->sem);
 	/* critical section */
-	spin_lock(&cdata->lock);
+	spin_lock_irqsave(&cdata->lock);
 	index = cdata->buf_ptr;
 	cbuf = cdata->buf;
-	spin_unlock(&cdata->lock);
+	spin_unlock_restore(&cdata->lock);
 	timer = &cdata->flush_timer;
 	sched = &cdata->sched_timer;
 	wq = &cdata->wq;
