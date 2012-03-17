@@ -12,6 +12,7 @@
 #include <linux/irq.h>
 #include <linux/miscdevice.h>
 #include <linux/input.h>
+#include <linux/semaphore.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>
 #include "cdata_ioctl.h"
@@ -36,6 +37,7 @@ struct cdata_t {
 
 	//DECLARE_WAIT_QUEUE_HEAD(wq)
 	wait_queue_head_t wq;
+	struct semaphore sem;
 };
 
 static void cdata_wake_up(unsigned long priv)
@@ -45,8 +47,13 @@ static void cdata_wake_up(unsigned long priv)
 	wait_queue_head_t *wq;
 	
 	cdata = (struct cdata_t *) priv;
+	
+	down_interruption(&cdata->sem);
+	
 	sched = &cdata->sched_timer;
 	wq = &cdata->wq;
+	
+	up(&cdata->sem);	
 
 	wake_up(wq);
 
@@ -116,6 +123,9 @@ static int cdata_open(struct inode *inode, struct file *filp)
 	/* init wq */
 	init_waitqueue_head(&data->wq);
 
+	/* init semaphore */
+	sema_init(&data->sem, 1);
+
 	filp->private_data = (void *)data;
 	return 0;
 }
@@ -145,6 +155,9 @@ static ssize_t cdata_read(struct file *filp, char *buf, size_t size, loff_t *off
 static ssize_t cdata_write(struct file *filp, const char *buf, size_t size, 
 			loff_t *off)
 {
+	/* shared data: cdata (flip->private_data)
+	   => need to protect */
+
 	unsigned int i=0, index=0;
 	unsigned char *cbuf=NULL;
 	struct cdata_t *cdata=NULL;
@@ -163,19 +176,24 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 		schedule();
 	}
 #endif
-
+	
 	cdata = (struct cdata_t *)filp->private_data;
+	down_interruption(&cdata->sem);
+	/* critical section */
 	index = cdata->buf_ptr;
 	cbuf = cdata->buf;
 	timer = &cdata->flush_timer;
 	sched = &cdata->sched_timer;
 	wq = &cdata->wq;
-	
+	up(&cdata->wq);
+
 	for(i=0; i < size; i++)
 	{
 		if(index >= CDATA_BUF_SIZE)
 		{
+			down_interruption(&cdata->sem);
 			cdata->buf_ptr = index;
+			up(&cdata->wq);
 			
 			/* kernel scheduling */
 			timer->expires = jiffies + 1*HZ;
@@ -196,7 +214,9 @@ repeat:
 			current->state = TASK_INTERRUPTIBLE;
 			schedule();
 			
+			down_interruption(&cdata->sem);
 			index = cdata->buf_ptr;
+			up(&cdata->wq);
 
 			if(index != 0)
 				goto repeat;
@@ -208,7 +228,9 @@ repeat:
 		index++;
 	}
 
+	down_interruption(&cdata->sem);
 	cdata->buf_ptr = index;	
+	up(&cdata->wq);
 
 	return 0;
 }
