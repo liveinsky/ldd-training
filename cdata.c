@@ -12,7 +12,7 @@
 #include <linux/irq.h>
 #include <linux/miscdevice.h>
 #include <linux/input.h>
-#include <linux/semaphore.h>
+#include <asm-arm/semaphore.h>
 #include <linux/spinlock.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>
@@ -84,17 +84,18 @@ static int lcd_flush(unsigned long priv)
 	unsigned char *fb;
 	unsigned int index;
 	unsigned char *buf;
+	unsigned long flags;
 	int i=0;
 	int offset=0;
 	
 	cdata = (struct cdata_t *) priv;
 
-	spin_lock_irqsave(&cdata->lock);
+	spin_lock_irqsave(&cdata->lock, flags);
 	fb = (unsigned char *)cdata->fb;
 	buf = cdata->buf;
 	index = cdata->buf_ptr;
 	offset = cdata->offset;
-	spin_unlock_irqrestore(&cdata->lock);
+	spin_unlock_irqrestore(&cdata->lock, flags);
 
 	for(i=0; i<index; i++)
 	{
@@ -166,6 +167,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 
 	unsigned int i=0, index=0;
 	unsigned char *cbuf=NULL;
+	unsigned long flags;
 	struct cdata_t *cdata=NULL;
 	struct timer_list *timer=NULL;
 	struct timer_list *sched=NULL;
@@ -186,10 +188,10 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 	cdata = (struct cdata_t *)filp->private_data;
 	down_interruptible(&cdata->sem);
 	/* critical section */
-	spin_lock_irqsave(&cdata->lock, 0);
+	spin_lock_irqsave(&cdata->lock, flags);
 	index = cdata->buf_ptr;
 	cbuf = cdata->buf;
-	spin_unlock_irqrestore(&cdata->lock);
+	spin_unlock_irqrestore(&cdata->lock, flags);
 	timer = &cdata->flush_timer;
 	sched = &cdata->sched_timer;
 	wq = &cdata->wq;
@@ -206,12 +208,12 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 			/* kernel scheduling */
 			timer->expires = jiffies + 1*HZ;
 			timer->data = (unsigned long) cdata;
-			timer->function = lcd_flush;
+			timer->function = (void *)lcd_flush;
 			add_timer(timer);
 			
 			sched->expires = jiffies + 10;
 			sched->data = (unsigned long) cdata;
-			sched->function = cdata_wake_up;
+			sched->function = (void *)cdata_wake_up;
 			add_timer(sched);
 			
 			wait.flags = 0;
@@ -256,7 +258,7 @@ static int cdata_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
 	switch(cmd)
 	{
 		case CDATA_CLEAR:
-			copy_from_user(&n, arg, sizeof(int));
+			copy_from_user(&n, (void *)arg, sizeof(int));
 			//get_user(n, arg); => equal = copy_from_user()
 			MSG2("clear pixl = %d.", n);
 			//color = 0xFFFFFF;
