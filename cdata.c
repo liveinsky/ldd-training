@@ -13,6 +13,7 @@
 #include <linux/miscdevice.h>
 #include <linux/input.h>
 #include <linux/semaphore.h>
+#include <linux/spinlock.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>
 #include "cdata_ioctl.h"
@@ -36,8 +37,9 @@ struct cdata_t {
 	struct timer_list sched_timer;
 
 	//DECLARE_WAIT_QUEUE_HEAD(wq)
-	wait_queue_head_t wq;
-	struct semaphore sem;
+	wait_queue_head_t 	wq;
+	struct semaphore 	sem;
+	spinlock_t			lock;
 };
 
 static void cdata_wake_up(unsigned long priv)
@@ -48,7 +50,7 @@ static void cdata_wake_up(unsigned long priv)
 	
 	cdata = (struct cdata_t *) priv;
 	
-	down_interruption(&cdata->sem);
+	down_interruptible(&cdata->sem);
 	
 	sched = &cdata->sched_timer;
 	wq = &cdata->wq;
@@ -86,10 +88,13 @@ static int lcd_flush(unsigned long priv)
 	int offset=0;
 	
 	cdata = (struct cdata_t *) priv;
+
+	spin_lock(&cdata->lock);
 	fb = (unsigned char *)cdata->fb;
 	buf = cdata->buf;
 	index = cdata->buf_ptr;
 	offset = cdata->offset;
+	spin_unlock(&cdata->lock);
 
 	for(i=0; i<index; i++)
 	{
@@ -125,6 +130,7 @@ static int cdata_open(struct inode *inode, struct file *filp)
 
 	/* init semaphore */
 	sema_init(&data->sem, 1);
+	spin_lock_init(&cdata->lock);
 
 	filp->private_data = (void *)data;
 	return 0;
@@ -178,22 +184,24 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 #endif
 	
 	cdata = (struct cdata_t *)filp->private_data;
-	down_interruption(&cdata->sem);
+	down_interruptible(&cdata->sem);
 	/* critical section */
+	spin_lock(&cdata->lock);
 	index = cdata->buf_ptr;
 	cbuf = cdata->buf;
+	spin_unlock(&cdata->lock);
 	timer = &cdata->flush_timer;
 	sched = &cdata->sched_timer;
 	wq = &cdata->wq;
-	up(&cdata->wq);
+	up(&cdata->sem);
 
 	for(i=0; i < size; i++)
 	{
 		if(index >= CDATA_BUF_SIZE)
 		{
-			down_interruption(&cdata->sem);
+			down_interruptible(&cdata->sem);
 			cdata->buf_ptr = index;
-			up(&cdata->wq);
+			up(&cdata->sem);
 			
 			/* kernel scheduling */
 			timer->expires = jiffies + 1*HZ;
@@ -214,9 +222,9 @@ repeat:
 			current->state = TASK_INTERRUPTIBLE;
 			schedule();
 			
-			down_interruption(&cdata->sem);
+			down_interruptible(&cdata->sem);
 			index = cdata->buf_ptr;
-			up(&cdata->wq);
+			up(&cdata->sem);
 
 			if(index != 0)
 				goto repeat;
@@ -228,9 +236,9 @@ repeat:
 		index++;
 	}
 
-	down_interruption(&cdata->sem);
+	down_interruptible(&cdata->sem);
 	cdata->buf_ptr = index;	
-	up(&cdata->wq);
+	up(&cdata->sem);
 
 	return 0;
 }
