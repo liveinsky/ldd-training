@@ -216,12 +216,20 @@ static ssize_t cdata_write(struct file *filp, const char *buf, size_t size,
 			sched->function = (void *)cdata_wake_up;
 			add_timer(sched);
 			
+#if 0
+			/* sm save */
+			prepare_to_wait(wq, &wait, TASK_INTERRUPTIBLE);
+#else
 			wait.flags = 0;
 			wait.task = current;
 			add_wait_queue(wq, &wait);
 repeat:
 			/* process scheduling */
 			current->state = TASK_INTERRUPTIBLE;
+			/*
+			smp_mb(); // for smp/multi-thread memory barrier
+			*/
+#endif
 			schedule();
 			
 			down_interruptible(&cdata->sem);
@@ -293,7 +301,7 @@ int cdata_mmap(struct file *filp, struct vm_area_struct *vma)
 	unsigned long from;
 	unsigned long to;
 	unsigned long size;
-
+	
 	from = vma->vm_start;
 	to = 0x33f00000;
 	size = vma->vm_end - vma->vm_start;
@@ -304,13 +312,20 @@ int cdata_mmap(struct file *filp, struct vm_area_struct *vma)
 	/* for the general case (remapped base on PAGE_SIZE) */
 	while(size)
 	{
+#if 1
+		/* kernel 2.4, no handle user page table */
 		remap_page_range(from, to, PAGE_SIZE, PAGE_SHARED);
-	
+#else
+		/* kernel 2.6, have handle user page table */
+		//remap_pfn_range(vma, vma->vm_start, __pa(kvirt) >> PAGE_SHIFT, PAGE_SIZE, vma->vm_page_prot);
+		remap_pfn_range(vma, from, to, PAGE_SIZE, vma->vm_page_prot);
+#endif
 		from += PAGE_SIZE;
 		to += PAGE_SIZE;
 		size -= PAGE_SIZE;
 	}
 #endif
+	
 	MSG("in cdata_mmap()");
 	MSG2("start addr = %p", vma->vm_start);
 	MSG2("end addr = %p", vma->vm_end);

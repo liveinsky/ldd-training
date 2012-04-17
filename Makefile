@@ -1,4 +1,7 @@
-obj-m := cdata.o
+#
+# Author: jollen
+# 
+obj-m := cdata_dev_class.o
 
 KDIR := /lib/modules/2.6.35-32-generic/build
 PWD := $(shell pwd)
